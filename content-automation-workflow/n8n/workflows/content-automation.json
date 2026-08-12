@@ -1,0 +1,373 @@
+{
+  "name": "Content Automation Workflow",
+  "description": "Webhook/Cron → AI generate blog → AI generate social posts → AI generate email → publish to WordPress, social media, email",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "content-generate",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Content Request Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "content-webhook-id",
+      "notes": "Receives content generation requests via webhook or cron trigger. Payload: {topic, tone, language}"
+    },
+    {
+      "parameters": {
+        "content": "## Content Automation Workflow\n\nThis workflow takes a single topic/prompt and generates:\n- Blog post (Markdown)\n- Social media posts (Twitter, Facebook, LinkedIn, Instagram)\n- Email newsletter (HTML + plain text)\n\nAll generated using local LLM (Ollama).",
+        "height": 300,
+        "width": 400
+      },
+      "id": "info-note",
+      "name": "Workflow Info",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-100, -200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.CONTENT_API_URL || 'http://localhost:8000' }}/api/content/blog",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "topic",
+              "value": "={{ $json.topic }}"
+            },
+            {
+              "name": "tone",
+              "value": "={{ $json.tone || 'professional' }}"
+            },
+            {
+              "name": "language",
+              "value": "={{ $json.language || 'en' }}"
+            },
+            {
+              "name": "min_words",
+              "value": "={{ $json.min_words || 800 }}"
+            },
+            {
+              "name": "max_words",
+              "value": "={{ $json.max_words || 2000 }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "generate-blog",
+      "name": "Generate Blog Post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, -120],
+      "notes": "Call FastAPI to generate a full blog post with H2/H3 headings, SEO keywords, and meta description"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.CONTENT_API_URL || 'http://localhost:8000' }}/api/content/social",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "topic",
+              "value": "={{ $json.topic }}"
+            },
+            {
+              "name": "tone",
+              "value": "={{ $json.tone || 'professional' }}"
+            },
+            {
+              "name": "language",
+              "value": "={{ $json.language || 'en' }}"
+            },
+            {
+              "name": "count",
+              "value": "={{ $json.social_count || 3 }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "generate-social",
+      "name": "Generate Social Posts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 120],
+      "notes": "Generate tailored posts for Twitter, Facebook, LinkedIn, Instagram"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.CONTENT_API_URL || 'http://localhost:8000' }}/api/content/email",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "topic",
+              "value": "={{ $json.topic }}"
+            },
+            {
+              "name": "tone",
+              "value": "={{ $json.tone || 'professional' }}"
+            },
+            {
+              "name": "language",
+              "value": "={{ $json.language || 'en' }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "generate-email",
+      "name": "Generate Email Newsletter",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 360],
+      "notes": "Generate HTML + plain text newsletter with subject line and CTA"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "blog_post",
+              "value": "={{ $json.blog_post }}",
+              "type": "string"
+            },
+            {
+              "name": "social_posts",
+              "value": "={{ JSON.stringify($json.social_posts) }}",
+              "type": "string"
+            },
+            {
+              "name": "email_newsletter",
+              "value": "={{ JSON.stringify($json.email_newsletter) }}",
+              "type": "string"
+            },
+            {
+              "name": "topic",
+              "value": "={{ $('Content Request Webhook').item.json.topic }}",
+              "type": "string"
+            },
+            {
+              "name": "generated_at",
+              "value": "={{ $now }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "merge-content",
+      "name": "Merge All Content",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [440, 120],
+      "notes": "Combine blog, social, and email output into a single content package"
+    },
+    {
+      "parameters": {
+        "content": "={{ $('Merge All Content').item.json.blog_post }}",
+        "fileName": "={{ $('Merge All Content').item.json.topic.replace(/\\s+/g, '_') }}_blog.md",
+        "options": {}
+      },
+      "id": "save-blog-file",
+      "name": "Save Blog to File",
+      "type": "n8n-nodes-base.writeFromFile",
+      "typeVersion": 1,
+      "position": [660, -120],
+      "notes": "Export blog post as Markdown file to workspace"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.WORDPRESS_URL }}/wp-json/wp/v2/posts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "basicAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "title",
+              "value": "={{ JSON.parse($('Merge All Content').item.json.blog_post).split('\\n')[0].replace('# ', '') }}"
+            },
+            {
+              "name": "content",
+              "value": "={{ $('Merge All Content').item.json.blog_post }}"
+            },
+            {
+              "name": "status",
+              "value": "=publish"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "publish-wordpress",
+      "name": "Publish to WordPress",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 120],
+      "notes": "Publish the generated blog post directly to your WordPress site. Configure WordPress Basic Auth credentials."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twitter.com/2/tweets",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "twitterOAuth2Api",
+        "sendBody": true,
+        "body": "={{ `{ \"text\": JSON.parse($('Merge All Content').item.json.social_posts)[0].content.substring(0, 280) }` }}",
+        "options": {}
+      },
+      "id": "publish-twitter",
+      "name": "Post to Twitter",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 300],
+      "notes": "Auto-post the Twitter-optimized social post. Configure Twitter OAuth2 credentials."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/me/feed",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "message",
+              "value": "={{ JSON.parse($('Merge All Content').item.json.social_posts)[1].content }}"
+            },
+            {
+              "name": "access_token",
+              "value": "={{ $env.FACEBOOK_ACCESS_TOKEN }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "publish-facebook",
+      "name": "Post to Facebook",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 480],
+      "notes": "Auto-post the Facebook-optimized social post. Set FACEBOOK_ACCESS_TOKEN in n8n environment."
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "toEmail": "={{ $env.EMAIL_RECIPIENT || 'newsletter@yourdomain.com' }}",
+        "subject": "={{ JSON.parse($('Merge All Content').item.json.email_newsletter).subject }}",
+        "textBody": "={{ JSON.parse($('Merge All Content').item.json.email_newsletter).body_text }}",
+        "htmlBody": "={{ JSON.parse($('Merge All Content').item.json.email_newsletter).body_html }}",
+        "options": {}
+      },
+      "id": "send-email",
+      "name": "Send Email Newsletter",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.4,
+      "position": [660, 660],
+      "notes": "Send the generated newsletter via configured SMTP. Set EMAIL_RECIPIENT in n8n environment."
+    },
+    {
+      "parameters": {
+        "operation": "push",
+        "channel": "#content-output",
+        "message": "=✅ Content generated for: {{ $('Merge All Content').item.json.topic }}\\n📝 Blog: {{ $('Save Blog File').item.json.filePath }}\\n📱 Social: {{ JSON.parse($('Merge All Content').item.json.social_posts).length }} posts\\n📧 Email: {{ JSON.parse($('Merge All Content').item.json.email_newsletter).subject }}"
+      },
+      "id": "notify-slack",
+      "name": "Notify Team (Slack)",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [880, 120],
+      "notes": "Optional: Send a summary to Slack when content generation completes"
+    },
+    {
+      "parameters": {
+        "respondWith": "JSON",
+        "jsonResponse": "={\n  \"status\": \"success\",\n  \"topic\": \"={{ $('Merge All Content').item.json.topic }}\",\n  \"blog_saved\": true,\n  \"social_posts_count\": \"={{ JSON.parse($('Merge All Content').item.json.social_posts).length }}\",\n  \"email_subject\": \"={{ JSON.parse($('Merge All Content').item.json.email_newsletter).subject }}\",\n  \"generated_at\": \"={{ $('Merge All Content').item.json.generated_at }}\"\n}",
+        "options": {}
+      },
+      "id": "return-response",
+      "name": "Return Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1100, 120],
+      "notes": "Return the final content generation summary as JSON"
+    }
+  ],
+  "connections": {
+    "Content Request Webhook": {
+      "main": [
+        [
+          { "node": "Generate Blog Post", "type": "main", "index": 0 },
+          { "node": "Generate Social Posts", "type": "main", "index": 0 },
+          { "node": "Generate Email Newsletter", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Generate Blog Post": {
+      "main": [[{ "node": "Merge All Content", "type": "main", "index": 0 }]]
+    },
+    "Generate Social Posts": {
+      "main": [[{ "node": "Merge All Content", "type": "main", "index": 1 }]]
+    },
+    "Generate Email Newsletter": {
+      "main": [[{ "node": "Merge All Content", "type": "main", "index": 2 }]]
+    },
+    "Merge All Content": {
+      "main": [
+        [
+          { "node": "Save Blog to File", "type": "main", "index": 0 },
+          { "node": "Publish to WordPress", "type": "main", "index": 0 },
+          { "node": "Post to Twitter", "type": "main", "index": 0 },
+          { "node": "Post to Facebook", "type": "main", "index": 0 },
+          { "node": "Send Email Newsletter", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Save Blog to File": {
+      "main": [[{ "node": "Notify Team (Slack)", "type": "main", "index": 0 }]]
+    },
+    "Publish to WordPress": {
+      "main": [[{ "node": "Notify Team (Slack)", "type": "main", "index": 0 }]]
+    },
+    "Post to Twitter": {
+      "main": [[{ "node": "Notify Team (Slack)", "type": "main", "index": 0 }]]
+    },
+    "Post to Facebook": {
+      "main": [[{ "node": "Notify Team (Slack)", "type": "main", "index": 0 }]]
+    },
+    "Send Email Newsletter": {
+      "main": [[{ "node": "Notify Team (Slack)", "type": "main", "index": 0 }]]
+    },
+    "Notify Team (Slack)": {
+      "main": [[{ "node": "Return Response", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveExecutionProgress": true,
+    "saveManualExecutions": true,
+    "timezone": "UTC"
+  },
+  "meta": {
+    "instanceId": "content-automation-workflow",
+    "templateVersion": "1.0.0",
+    "templateId": "content-automation",
+    "category": "content-creation",
+    "tags": ["content", "automation", "blog", "social-media", "email", "ai", "ollama"]
+  }
+}

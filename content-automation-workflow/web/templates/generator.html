@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Content Automation Generator</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f7fa; color: #333; min-height: 100vh; }
+    .container { max-width: 900px; margin: 0 auto; padding: 40px 20px; }
+    header { text-align: center; margin-bottom: 40px; }
+    header h1 { font-size: 2em; color: #1a1a2e; }
+    header p { color: #666; margin-top: 8px; }
+    .card { background: #fff; border-radius: 12px; padding: 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 24px; }
+    .card h2 { font-size: 1.2em; margin-bottom: 20px; color: #1a1a2e; }
+    label { display: block; font-weight: 600; margin-bottom: 6px; color: #444; }
+    input, select, textarea { width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; margin-bottom: 16px; }
+    textarea { min-height: 100px; resize: vertical; }
+    .row { display: flex; gap: 16px; }
+    .row > div { flex: 1; }
+    button { background: #0066cc; color: #fff; border: none; padding: 12px 28px; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; }
+    button:hover { background: #0055aa; }
+    button:disabled { background: #999; cursor: not-allowed; }
+    .btn-group { display: flex; gap: 12px; flex-wrap: wrap; }
+    .btn-secondary { background: #6c757d; }
+    .btn-secondary:hover { background: #5a6268; }
+    .output { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 20px; margin-top: 16px; white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 13px; max-height: 400px; overflow-y: auto; }
+    .tabs { display: flex; gap: 4px; margin-bottom: 0; }
+    .tab { padding: 8px 16px; border: 1px solid #ddd; border-bottom: none; border-radius: 8px 8px 0 0; cursor: pointer; background: #f0f0f0; }
+    .tab.active { background: #fff; font-weight: 600; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .status { padding: 12px; border-radius: 8px; margin-bottom: 16px; display: none; }
+    .status.loading { display: block; background: #fff3cd; color: #856404; }
+    .status.success { display: block; background: #d4edda; color: #155724; }
+    .status.error { display: block; background: #f8d7da; color: #721c24; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>📝 Content Automation Generator</h1>
+      <p>One topic → Blog post + Social media + Email newsletter</p>
+    </header>
+
+    <div class="card">
+      <h2>🎯 Input</h2>
+      <label for="topic">Topic / Prompt</label>
+      <textarea id="topic" placeholder="e.g., How AI is transforming content marketing in 2026"></textarea>
+
+      <div class="row">
+        <div>
+          <label for="tone">Tone</label>
+          <select id="tone">
+            <option value="professional">Professional</option>
+            <option value="casual">Casual</option>
+            <option value="humorous">Humorous</option>
+            <option value="academic">Academic</option>
+            <option value="persuasive">Persuasive</option>
+          </select>
+        </div>
+        <div>
+          <label for="language">Language</label>
+          <select id="language">
+            <option value="en">English</option>
+            <option value="vi">Vietnamese</option>
+            <option value="fr">French</option>
+            <option value="es">Spanish</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="btn-group">
+        <button id="btn-all" onclick="generateAll()">⚡ Generate All</button>
+        <button class="btn-secondary" onclick="generateBlog()">📝 Blog Only</button>
+        <button class="btn-secondary" onclick="generateSocial()">📱 Social Only</button>
+        <button class="btn-secondary" onclick="generateEmail()">📧 Email Only</button>
+      </div>
+
+      <div id="status" class="status"></div>
+    </div>
+
+    <div class="card" id="output-card" style="display:none;">
+      <h2>📊 Generated Content</h2>
+      <div class="tabs">
+        <div class="tab active" onclick="showTab('blog')">Blog Post</div>
+        <div class="tab" onclick="showTab('social')">Social Media</div>
+        <div class="tab" onclick="showTab('email')">Email</div>
+        <div class="tab" onclick="showTab('json')">Raw JSON</div>
+      </div>
+      <div id="tab-blog" class="tab-content active"><div class="output" id="output-blog"></div></div>
+      <div id="tab-social" class="tab-content"><div class="output" id="output-social"></div></div>
+      <div id="tab-email" class="tab-content"><div class="output" id="output-email"></div></div>
+      <div id="tab-json" class="tab-content"><div class="output" id="output-json"></div></div>
+    </div>
+  </div>
+
+  <script>
+    const API = window.location.origin + '/api/content';
+
+    function showTab(name) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      document.getElementById('tab-' + name).classList.add('active');
+      event.target.classList.add('active');
+    }
+
+    function setStatus(msg, type) {
+      const s = document.getElementById('status');
+      s.textContent = msg;
+      s.className = 'status ' + type;
+    }
+
+    function getInput() {
+      return {
+        topic: document.getElementById('topic').value,
+        tone: document.getElementById('tone').value,
+        language: document.getElementById('language').value
+      };
+    }
+
+    async function callAPI(endpoint, extra = {}) {
+      const data = { ...getInput(), ...extra };
+      const resp = await fetch(API + endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      return resp.json();
+    }
+
+    async function generateAll() {
+      setStatus('Generating all content... This may take a moment.', 'loading');
+      document.getElementById('output-card').style.display = 'none';
+      try {
+        const result = await callAPI('/generate');
+        const content = result.content;
+        document.getElementById('output-blog').textContent = content.blog_post;
+        document.getElementById('output-social').textContent = JSON.stringify(content.social_media_posts, null, 2);
+        document.getElementById('output-email').textContent = JSON.stringify(content.email_newsletter, null, 2);
+        document.getElementById('output-json').textContent = JSON.stringify(result, null, 2);
+        document.getElementById('output-card').style.display = 'block';
+        setStatus('✅ Content generated successfully!', 'success');
+      } catch (e) {
+        setStatus('❌ Error: ' + e.message, 'error');
+      }
+    }
+
+    async function generateBlog() {
+      setStatus('Generating blog post...', 'loading');
+      try {
+        const result = await callAPI('/blog');
+        document.getElementById('output-blog').textContent = result.blog_post;
+        document.getElementById('output-card').style.display = 'block';
+        showTab('blog');
+        setStatus('✅ Blog post generated!', 'success');
+      } catch (e) {
+        setStatus('❌ Error: ' + e.message, 'error');
+      }
+    }
+
+    async function generateSocial() {
+      setStatus('Generating social posts...', 'loading');
+      try {
+        const result = await callAPI('/social');
+        document.getElementById('output-social').textContent = JSON.stringify(result.social_posts, null, 2);
+        document.getElementById('output-card').style.display = 'none';
+        showTab('social');
+        setStatus('✅ Social posts generated!', 'success');
+      } catch (e) {
+        setStatus('❌ Error: ' + e.message, 'error');
+      }
+    }
+
+    async function generateEmail() {
+      setStatus('Generating email...', 'loading');
+      try {
+        const result = await callAPI('/email');
+        document.getElementById('output-email').textContent = JSON.stringify(result.email_newsletter, null, 2);
+        document.getElementById('output-card').style.display = 'none';
+        showTab('email');
+        setStatus('✅ Email generated!', 'success');
+      } catch (e) {
+        setStatus('❌ Error: ' + e.message, 'error');
+      }
+    }
+  </script>
+</body>
+</html>

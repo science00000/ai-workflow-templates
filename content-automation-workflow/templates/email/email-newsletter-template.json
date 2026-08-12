@@ -1,0 +1,29 @@
+{
+  "email_template": {
+    "subject": "Line that grabs attention (under 60 chars, creates curiosity)",
+    "preheader": "Preview text shown in inbox (under 100 chars, complements subject)",
+    "body_html": "<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n</head>\n<body style=\"font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;\">\n  <div style=\"text-align: center; padding: 20px 0; border-bottom: 2px solid #0066cc;\">\n    <h1 style=\"color: #0066cc; margin: 0;\">{{ COMPANY_NAME }}</h1>\n  </div>\n  <div style=\"padding: 30px 0;\">\n    <h2 style=\"font-size: 24px; color: #1a1a1a;\">{{ EMAIL_HEADLINE }}</h2>\n    <p style=\"font-size: 16px; line-height: 1.6;\">{{ INTRO_PARAGRAPH }}</p>\n  </div>\n  <div style=\"padding: 20px 0;\">{{ CONTENT_SECTIONS }}</div>\n  <div style=\"text-align: center; padding: 30px 0;\">\n    <a href=\"{{ CTA_LINK }}\" style=\"display: inline-block; padding: 14px 32px; background: #0066cc; color: #fff; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: 600;\">{{ CTA_TEXT }}</a>\n  </div>\n  <div style=\"text-align: center; padding: 20px 0; border-top: 1px solid #eee; color: #999; font-size: 12px;\">\n    <p>You're receiving this because you subscribed to our newsletter.</p>\n    <p><a href=\"{{ UNSUBSCRIBE_LINK }}\" style=\"color: #999;\">Unsubscribe</a></p>\n  </div>\n</body>\n</html>",
+    "body_text": "{{ COMPANY_NAME }}\n\n{{ EMAIL_HEADLINE }}\n\n{{ INTRO_PARAGRAPH }}\n\n{{ CONTENT_SECTIONS_PLAIN }}\n\n{{ CTA_TEXT }}: {{ CTA_LINK }}\n\n---\nUnsubscribe: {{ UNSUBSCRIBE_LINK }}",
+    "cta_text": "Read the Full Article",
+    "cta_link": "https://yourdomain.com/blog/post-slug"
+  },
+  "best_practices": {
+    "subject_line": [
+      "Keep under 60 characters",
+      "Create curiosity without clickbait",
+      "Include numbers or brackets when possible"
+    ],
+    "content": [
+      "Keep paragraphs short (1-3 sentences)",
+      "Use subheadings for scannability",
+      "Include only one primary CTA",
+      "Mobile-first: test at 320px width"
+    ],
+    "design": [
+      "Use inline CSS (not style blocks)",
+      "Max width: 600px",
+      "Contrast ratio greater than 4.5:1 for text",
+      "Include alt text for all images"
+    ]
+  }
+}

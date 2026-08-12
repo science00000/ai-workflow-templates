@@ -1,0 +1,26 @@
+{
+  "twitter": {
+    "max_chars": 280,
+    "style": "punchy, concise, uses emojis sparingly",
+    "template": "{hook} {insight} {cta} {hashtags}",
+    "example": "🚀 The #1 mistake most teams make with AI content?\n\nThey write FOR algorithms, not FOR people.\n\nHere's the 3-step framework that got us 10x engagement → {link} #AI #ContentMarketing"
+  },
+  "facebook": {
+    "max_chars": 63200,
+    "style": "conversational, storytelling, community-focused",
+    "template": "{story_hook} {main_point} {question_for_engagement} {hashtags}",
+    "example": "We tested AI-generated content for 30 days. The results surprised everyone.\n\nOur biggest takeaway? Quality AI content isn't about replacing writers — it's about giving them superpowers.\n\nWhat's been your experience with AI content tools? 👇"
+  },
+  "linkedin": {
+    "max_chars": 3000,
+    "style": "professional, thought leadership, data-driven",
+    "template": "{industry_insight} {data_point} {framework} {thought_provoking_question}",
+    "example": "The content marketing landscape is shifting.\n\nOur analysis of 10,000+ posts reveals that AI-assisted content outperforms purely human-written content by 340% in engagement — when done right.\n\nThe key? Human strategy + AI execution.\n\nHere's the framework we use → {link}"
+  },
+  "instagram": {
+    "max_chars": 2200,
+    "style": "visual-first, emoji-rich, storytelling, hashtag-heavy",
+    "template": "{eye_catching_opener} {value_prop} {emoji_bullet_list} {hashtags}",
+    "example": "✨ STOP scrolling if you create content ✨\n\nI automated my entire content pipeline and here's what happened:\n\n📈 3x more posts\n⏰ 80% less time\n🎯 Better engagement\n\nThe secret? One prompt → blog + social + email 🤯\n\nSave this for later! 🔖\n\n#contentcreation #marketing #AItools #productivity #digitalmarketing"
+  }
+}
