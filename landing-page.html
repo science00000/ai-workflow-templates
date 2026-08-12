@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Customer Support Bot Template — Deploy in 15 Minutes</title>
+  <meta name="description" content="Self-deployable AI customer support system with RAG pipeline, local LLM, and web chat UI. No cloud API costs. Deploy in 15 minutes.">
+  <style>
+    :root {
+      --primary: #667eea;
+      --primary-dark: #5a6fd6;
+      --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --dark: #1a1a2e;
+      --text: #333;
+      --gray: #666;
+      --light: #f8f9fa;
+      --border: #e2e8f0;
+      --success: #10b981;
+      --code-bg: #f1f5f9;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: var(--text);
+      line-height: 1.6;
+      background: #fff;
+    }
+
+    .container { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+
+    /* ── Hero ──────────────────────────────────────── */
+    .hero {
+      background: var(--gradient);
+      color: #fff;
+      padding: 80px 24px 60px;
+      text-align: center;
+    }
+
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 800;
+      margin-bottom: 16px;
+      line-height: 1.2;
+    }
+
+    .hero p {
+      font-size: 1.2rem;
+      opacity: 0.9;
+      max-width: 600px;
+      margin: 0 auto 32px;
+    }
+
+    .badge-row { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin-bottom: 32px; }
+    .badge {
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(8px);
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .cta-btn {
+      display: inline-block;
+      background: #fff;
+      color: var(--primary);
+      padding: 16px 40px;
+      border-radius: 12px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      text-decoration: none;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+    }
+
+    .cta-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    }
+
+    /* ── Features ──────────────────────────────────── */
+    .features {
+      padding: 80px 24px;
+      background: var(--light);
+    }
+
+    .section-title {
+      text-align: center;
+      font-size: 2rem;
+      font-weight: 800;
+      margin-bottom: 12px;
+    }
+
+    .section-subtitle {
+      text-align: center;
+      color: var(--gray);
+      margin-bottom: 48px;
+      font-size: 1.1rem;
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+    }
+
+    .feature-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      transition: transform 0.2s;
+    }
+
+    .feature-card:hover { transform: translateY(-4px); }
+
+    .feature-icon { font-size: 2rem; margin-bottom: 12px; }
+
+    .feature-card h3 {
+      font-size: 1.15rem;
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+
+    .feature-card p { color: var(--gray); font-size: 0.95rem; }
+
+    /* ── Architecture ──────────────────────────────── */
+    .architecture {
+      padding: 80px 24px;
+    }
+
+    .arch-diagram {
+      background: var(--dark);
+      color: #fff;
+      border-radius: 16px;
+      padding: 40px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 0.85rem;
+      overflow-x: auto;
+      white-space: pre;
+      line-height: 1.8;
+    }
+
+    /* ── Pricing ───────────────────────────────────── */
+    .pricing {
+      padding: 80px 24px;
+      background: var(--light);
+    }
+
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 24px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .price-card {
+      background: #fff;
+      border: 2px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      text-align: center;
+      position: relative;
+    }
+
+    .price-card.popular {
+      border-color: var(--primary);
+      box-shadow: 0 8px 32px rgba(102, 126, 234, 0.15);
+    }
+
+    .popular-badge {
+      position: absolute;
+      top: -14px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--gradient);
+      color: #fff;
+      padding: 4px 16px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    .price-card h3 { font-size: 1.2rem; margin-bottom: 8px; }
+    .price { font-size: 2.5rem; font-weight: 800; margin: 16px 0; }
+    .price span { font-size: 1rem; font-weight: 400; color: var(--gray); }
+
+    .price-features {
+      list-style: none;
+      text-align: left;
+      margin: 24px 0;
+    }
+
+    .price-features li {
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.9rem;
+    }
+
+    .price-features li::before { content: "✓ "; color: var(--success); font-weight: 700; }
+
+    .price-btn {
+      display: block;
+      padding: 12px;
+      border-radius: 10px;
+      font-weight: 700;
+      text-decoration: none;
+      font-size: 1rem;
+      transition: background 0.2s;
+    }
+
+    .price-card.popular .price-btn {
+      background: var(--gradient);
+      color: #fff;
+      border: none;
+    }
+
+    .price-card:not(.popular) .price-btn {
+      background: transparent;
+      color: var(--primary);
+      border: 2px solid var(--primary);
+    }
+
+    /* ── Demo ──────────────────────────────────────── */
+    .demo {
+      padding: 80px 24px;
+    }
+
+    .demo-code {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 0.9rem;
+      overflow-x: auto;
+    }
+
+    .demo-code .comment { color: #6b7280; }
+    .demo-code .keyword { color: #7c3aed; }
+    .demo-code .string { color: #059669; }
+    .demo-code .func { color: #2563eb; }
+
+    /* ── FAQ ───────────────────────────────────────── */
+    .faq {
+      padding: 80px 24px;
+      background: var(--light);
+    }
+
+    .faq-item {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 16px;
+      max-width: 700px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .faq-item h4 { margin-bottom: 8px; font-size: 1.05rem; }
+    .faq-item p { color: var(--gray); }
+
+    /* ── Footer CTA ────────────────────────────────── */
+    .footer-cta {
+      background: var(--gradient);
+      color: #fff;
+      padding: 80px 24px;
+      text-align: center;
+    }
+
+    .footer-cta h2 { font-size: 2rem; margin-bottom: 16px; }
+    .footer-cta p { opacity: 0.9; margin-bottom: 32px; font-size: 1.1rem; }
+
+    /* ── Responsive ────────────────────────────────── */
+    @media (max-width: 640px) {
+      .hero { padding: 60px 16px 40px; }
+      .arch-diagram { padding: 20px; font-size: 0.75rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="badge-row">
+      <span class="badge">🤖 LangGraph + FastAPI</span>
+      <span class="badge">🧠 Local LLM</span>
+      <span class="badge">⚡ Deploy in 15 min</span>
+      <span class="badge">$0 API costs</span>
+    </div>
+    <h1>AI Customer Support Bot</h1>
+    <p>Production-ready AI chatbot with RAG, knowledge base, and live chat UI. Deploy locally — no cloud API costs, no vendor lock-in.</p>
+    <a href="https://gumroad.com/l/ai-customer-support-bot" class="cta-btn">Get the Template — $29</a>
+  </section>
+
+  <!-- Features -->
+  <section class="features">
+    <div class="container">
+      <h2 class="section-title">Everything You Need</h2>
+      <p class="section-subtitle">A complete, production-ready AI support system — not another tutorial</p>
+
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="feature-icon">🧠</div>
+          <h3>LangGraph Agent</h3>
+          <p>Multi-node conversation flow with intent classification, RAG lookup, and auto-escalation to human agents.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📚</div>
+          <h3>Knowledge Base</h3>
+          <p>Drop your FAQ, docs, or manuals into the KB — the bot answers from your content via semantic search.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">💬</div>
+          <h3>Live Chat UI</h3>
+          <p>Beautiful, embeddable chat widget. Drop it into any website with a single iframe tag.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔒</div>
+          <h3>Local LLM</h3>
+          <p>Runs on Ollama + Llama 3.2 — zero API costs, full data privacy, works offline.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">⚡</div>
+          <h3>1-Command Deploy</h3>
+          <p><code>bash deploy/quick-deploy.sh</code> — Docker Compose spins up 5 services in minutes.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔄</div>
+          <h3>n8n Workflow</h3>
+          <p>Ready-to-import n8n workflow for automation: webhook → classify → KB → respond → escalate.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Architecture -->
+  <section class="architecture">
+    <div class="container">
+      <h2 class="section-title">Architecture</h2>
+      <p class="section-subtitle">Modern, modular, production-grade</p>
+
+      <div class="arch-diagram">
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│  Chat Widget  │────▶│  FastAPI     │────▶│  LangGraph   │
+│  (Web/Mobile) │◀────│  Server      │◀────│  Agent       │
+└──────────────┘     └──────┬───────┘     └──────┬───────┘
+                           │                     │
+                    ┌──────▼───────┐     ┌───────▼──────┐
+                    │   PostgreSQL │     │   Qdrant     │
+                    │  (Sessions)  │     │  (Vector KB) │
+                    └──────────────┘     └───────┬──────┘
+                                                │
+                               ┌────────────────▼──────────┐
+                               │   Ollama (Llama 3.2)      │
+                               │   Embeddings + Chat        │
+                               └────────────────────────────┘</div>
+    </div>
+  </section>
+
+  <!-- Quick Deploy Demo -->
+  <section class="demo">
+    <div class="container">
+      <h2 class="section-title">Deploy in 3 Commands</h2>
+      <p class="section-subtitle">That's it — no complex setup, no cloud accounts</p>
+
+      <div class="demo-code">
+<span class="comment"># Clone the template</span>
+git clone https://github.com/science00000/ai-workflow-templates.git
+cd ai-workflow-templates
+
+<span class="comment"># Configure (optional)</span>
+cp .env.example .env
+
+<span class="comment"># Deploy — starts 5 Docker services</span>
+<span class="keyword">bash</span> deploy/quick-deploy.sh
+
+<span class="comment"># 🌐 Chat at: http://localhost:8000/chat</span>
+<span class="comment"># 📖 API docs: http://localhost:8000/docs</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing -->
+  <section class="pricing">
+    <div class="container">
+      <h2 class="section-title">Simple Pricing</h2>
+      <p class="section-subtitle">Pay once, use forever — includes all future updates</p>
+
+      <div class="pricing-grid">
+        <div class="price-card">
+          <h3>Starter</h3>
+          <div class="price">$29<span> one-time</span></div>
+          <ul class="price-features">
+            <li>Full source code</li>
+            <li>Docker Compose deploy</li>
+            <li>Web chat widget</li>
+            <li>Sample knowledge base</li>
+            <li>Setup guide (README)</li>
+          </ul>
+          <a href="https://gumroad.com/l/ai-customer-support-bot" class="price-btn">Get Starter</a>
+        </div>
+
+        <div class="price-card popular">
+          <div class="popular-badge">🔥 Most Popular</div>
+          <h3>Pro</h3>
+          <div class="price">$49<span> one-time</span></div>
+          <ul class="price-features">
+            <li>Everything in Starter</li>
+            <li>n8n workflow automation</li>
+            <li>Cloud deploy scripts (AWS/GCP)</li>
+            <li>Admin dashboard</li>
+            <li>WebSocket real-time chat</li>
+            <li>Priority support (30 days)</li>
+          </ul>
+          <a href="https://gumroad.com/l/ai-customer-support-bot-pro" class="price-btn">Get Pro</a>
+        </div>
+
+        <div class="price-card">
+          <h3>Enterprise</h3>
+          <div class="price">$99<span> one-time</span></div>
+          <ul class="price-features">
+            <li>Everything in Pro</li>
+            <li>Custom KB setup (1hr call)</li>
+            <li>White-label license</li>
+            <li>Slack/email escalation</li>
+            <li>Analytics dashboard</li>
+            <li>Lifetime updates + support</li>
+          </ul>
+          <a href="https://gumroad.com/l/ai-customer-support-bot-enterprise" class="price-btn">Get Enterprise</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="faq">
+    <div class="container">
+      <h2 class="section-title">FAQ</h2>
+
+      <div class="faq-item">
+        <h4>Do I need an OpenAI API key?</h4>
+        <p>No. The bot runs entirely on local LLMs via Ollama. Zero API costs. You can also use OpenAI-compatible endpoints if preferred.</p>
+      </div>
+
+      <div class="faq-item">
+        <h4>What are the system requirements?</h4>
+        <p>Docker + 4GB RAM minimum (8GB recommended for the LLM). Works on Mac, Linux, and Windows.</p>
+      </div>
+
+      <div class="faq-item">
+        <h4>Can I use it commercially?</h4>
+        <p>Yes — MIT License. Use it for your own projects, clients, or products. No attribution required.</p>
+      </div>
+
+      <div class="faq-item">
+        <h4>How do I customize the knowledge base?</h4>
+        <p>Drop your .md, .txt, or .json files into <code>data/knowledge-base/</code> and hit the rebuild endpoint. The bot learns from your content automatically.</p>
+      </div>
+
+      <div class="faq-item">
+        <h4>Does it support Vietnamese?</h4>
+        <p>Yes — Llama 3.2 handles Vietnamese well. Just add your Vietnamese content to the knowledge base.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer CTA -->
+  <section class="footer-cta">
+    <div class="container">
+      <h2>Ready to Deploy?</h2>
+      <p>Get the template, deploy in 15 minutes, and start handling customer support with AI.</p>
+      <a href="https://gumroad.com/l/ai-customer-support-bot" class="cta-btn">Get the Template — $29</a>
+    </div>
+  </section>
+
+</body>
+</html>
