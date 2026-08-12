@@ -1,0 +1,16 @@
+# AI Customer Support Bot
+.env
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.whl
+.mypy_cache/
+.pytest_cache/
+.venv/
+venv/
+*.db
+*.sqlite
+data/knowledge-base/*.json
+node_modules/

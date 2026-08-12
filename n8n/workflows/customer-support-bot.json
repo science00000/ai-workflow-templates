@@ -1,0 +1,343 @@
+{
+  "name": "AI Customer Support Bot Workflow",
+  "description": "Webhook → Intent Classification → Knowledge Base Lookup → Response Generation → Reply",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "support-webhook",
+        "options": {}
+      },
+      "id": "webhook-node",
+      "name": "Incoming Message Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "support-webhook-id",
+      "notes": "Receives incoming customer messages from chat widget, email, or external integrations"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPPORT_BOT_URL }}/api/chat/classify",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "message",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "session_id",
+              "value": "={{ $json.session_id || 'anonymous-' + $uuid }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "classify-intent-node",
+      "name": "Classify Intent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 0],
+      "notes": "Classify user intent: general_question, order_status, refund, technical, greeting, escalation"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "value1": "={{ $json.intent }}",
+          "conditions": [
+            {
+              "id": "general_question",
+              "operator": { "type": "string", "operation": "equals" },
+              "value1": "",
+              "value2": "general_question"
+            },
+            {
+              "id": "order_status",
+              "operator": { "type": "string", "operation": "equals" },
+              "value1": "",
+              "value2": "order_status"
+            },
+            {
+              "id": "refund",
+              "operator": { "type": "string", "operation": "equals" },
+              "value1": "",
+              "value2": "refund"
+            },
+            {
+              "id": "technical",
+              "operator": { "type": "string", "operation": "equals" },
+              "value1": "",
+              "value2": "technical"
+            },
+            {
+              "id": "greeting",
+              "operator": { "type": "string", "operation": "equals" },
+              "value1": "",
+              "value2": "greeting"
+            },
+            {
+              "id": "escalation",
+              "operator": { "type": "string", "operation": "equals" },
+              "value1": "",
+              "value2": "escalation"
+            }
+          ]
+        }
+      },
+      "id": "route-by-intent-node",
+      "name": "Route by Intent",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [440, 0],
+      "notes": "Route to appropriate handler based on classified intent"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPPORT_BOT_URL }}/api/knowledge/search",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "top_k",
+              "value": "=5"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "lookup-kb-node",
+      "name": "Knowledge Base Lookup",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, -120],
+      "notes": "Query Qdrant vector store for relevant knowledge base entries"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPPORT_BOT_URL }}/api/chat/generate",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "message",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "context",
+              "value": "={{ JSON.stringify($json.results) }}"
+            },
+            {
+              "name": "intent",
+              "value": "={{ $json.intent }}"
+            },
+            {
+              "name": "session_id",
+              "value": "={{ $json.session_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "generate-response-node",
+      "name": "Generate Response",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, -120],
+      "notes": "Generate AI response using LLM with RAG context from knowledge base"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.confidence }}",
+              "operation": "smaller"
+            }
+          ]
+        },
+        "value2": 0.6
+      },
+      "id": "check-confidence-node",
+      "name": "Check Confidence",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1100, -120],
+      "notes": "If confidence < 0.6, escalate to human agent"
+    },
+    {
+      "parameters": {
+        "respondWith": "JSON",
+        "jsonResponse": "={\n  \"response\": \"={{ $json.response }}\",\n  \"intent\": \"={{ $json.intent }}\",\n  \"confidence\": \"={{ $json.confidence }}\",\n  \"sources\": \"={{ ($json.sources || []) }}\",\n  \"needs_escalation\": false\n}",
+        "options": {}
+      },
+      "id": "send-response-node",
+      "name": "Send Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1320, -240],
+      "notes": "Return the final AI-generated response"
+    },
+    {
+      "parameters": {
+        "respondWith": "JSON",
+        "jsonResponse": "={\n  \"response\": \"I understand your concern. Let me connect you with a human agent who can help further.\",\n  \"intent\": \"={{ $json.intent }}\",\n  \"confidence\": \"={{ $json.confidence }}\",\n  \"needs_escalation\": true\n}",
+        "options": {}
+      },
+      "id": "escalate-node",
+      "name": "Escalate to Human",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1320, 0],
+      "notes": "Low confidence — hand off to human support"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPPORT_BOT_URL }}/api/chat/generate",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "message",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "context",
+              "value": "=[]"
+            },
+            {
+              "name": "intent",
+              "value": "={{ $json.intent }}"
+            },
+            {
+              "name": "session_id",
+              "value": "={{ $json.session_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "direct-response-node",
+      "name": "Direct Response (No KB)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 180],
+      "notes": "For greetings/thanks — respond directly without KB lookup"
+    },
+    {
+      "parameters": {
+        "operation": "push",
+        "channel": "#support-notifications",
+        "message": "=🚨 Escalation needed\\nCustomer: {{ $json.session_id }}\\nMessage: {{ $json.message }}\\nIntent: {{ $json.intent }}\\nConfidence: {{ $json.confidence }}"
+      },
+      "id": "notify-escalation-node",
+      "name": "Notify Team (Slack)",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [1540, 0],
+      "notes": "Send escalation alert to support team channel"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": {
+            "value": "={{ $json.session_id }}",
+            "mode": "list",
+            "cachedResultName": "={{ $json.session_id }}"
+          }
+        },
+        "fields": {
+          "body": {
+            "last_message": "={{ $json.message }}",
+            "last_intent": "={{ $json.intent }}",
+            "last_response": "={{ $json.response }}",
+            "needs_escalation": "={{ $json.needs_escalation || false }}",
+            "updated_at": "={{ $now }}"
+          }
+        }
+      },
+      "id": "log-conversation-node",
+      "name": "Log Conversation",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 1,
+      "position": [1320, 120],
+      "notes": "Log the conversation for analytics and training"
+    }
+  ],
+  "connections": {
+    "Incoming Message Webhook": {
+      "main": [[{ "node": "Classify Intent", "type": "main", "index": 0 }]]
+    },
+    "Classify Intent": {
+      "main": [[{ "node": "Route by Intent", "type": "main", "index": 0 }]]
+    },
+    "Route by Intent": {
+      "main": [
+        [
+          { "node": "Knowledge Base Lookup", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Knowledge Base Lookup", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Knowledge Base Lookup", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Knowledge Base Lookup", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Direct Response (No KB)", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Escalate to Human", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Knowledge Base Lookup": {
+      "main": [[{ "node": "Generate Response", "type": "main", "index": 0 }]]
+    },
+    "Generate Response": {
+      "main": [[{ "node": "Check Confidence", "type": "main", "index": 0 }]]
+    },
+    "Check Confidence": {
+      "main": [
+        [
+          { "node": "Send Response", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Escalate to Human", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Direct Response (No KB)": {
+      "main": [[{ "node": "Send Response", "type": "main", "index": 0 }]]
+    },
+    "Escalate to Human": {
+      "main": [[{ "node": "Notify Team (Slack)", "type": "main", "index": 0 }]]
+    },
+    "Send Response": {
+      "main": [[{ "node": "Log Conversation", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveExecutionProgress": true,
+    "saveManualExecutions": true
+  },
+  "meta": {
+    "instanceId": "ai-customer-support-bot",
+    "templateVersion": "1.0.0"
+  }
+}

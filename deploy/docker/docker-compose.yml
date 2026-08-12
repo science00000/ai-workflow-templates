@@ -1,0 +1,125 @@
+version: "3.9"
+
+services:
+  # ── FastAPI Application ──────────────────────────────────
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/docker/Dockerfile
+    container_name: support-bot-app
+    ports:
+      - "8000:8000"
+    environment:
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - DATABASE_URL=postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/support_bot
+      - REDIS_URL=redis://redis:6379/0
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2}
+      - KB_DATA_DIR=/app/data/knowledge-base
+    volumes:
+      - ../data/knowledge-base:/app/data/knowledge-base
+      - kb-data:/app/data
+    depends_on:
+      qdrant:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── Qdrant Vector Database ───────────────────────────────
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: support-bot-qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant-data:/qdrant/storage
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── PostgreSQL ───────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: support-bot-db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=support_bot
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis ────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: support-bot-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Ollama (Local LLM) ───────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: support-bot-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c", "ollama pull ${OLLAMA_MODEL:-llama3.2} && ollama serve"]
+
+  # ── n8n (Workflow Automation) — Optional ─────────────────
+  # n8n:
+  #   image: n8nio/n8n:latest
+  #   container_name: support-bot-n8n
+  #   ports:
+  #     - "5678:5678"
+  #   environment:
+  #     - SUPPORT_BOT_URL=http://app:8000
+  #     - N8N_HOST=localhost
+  #     - N8N_PORT=5678
+  #   volumes:
+  #     - n8n-data:/home/node/.n8n
+  #     - ../n8n/workflows:/import
+  #   depends_on:
+  #     app:
+  #       condition: service_healthy
+  #   restart: unless-stopped
+
+volumes:
+  qdrant-data:
+  pg-data:
+  redis-data:
+  ollama-data:
+  kb-data:
